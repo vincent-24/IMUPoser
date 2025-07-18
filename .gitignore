@@ -6,6 +6,7 @@ checkpoints
 results
 
 ProcessMocap
+src/imuposer/smpl/SMPL_NEUTRAL.pkl
 
 **/__pycache__/
 **/lightning_logs/
