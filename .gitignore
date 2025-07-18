@@ -1,8 +1,13 @@
-data/*
+data/processed_imuposer
+data/processed_imuposer_25fps
+data/raw
+!data/.gitkeep
+
 # experiments
 checkpoints/*
-results
-src/imuposer/smpl/SMPL_NEUTRAL.pkl
+!checkpoints.gitkeep
+
+results/
 
 ProcessMocap
 src/imuposer/smpl/SMPL_NEUTRAL.pkl
