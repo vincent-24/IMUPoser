@@ -1,9 +1,8 @@
-data/processed_imuposer
-data/processed_imuposer_25fps
-data/raw
+data/*
 # experiments
-checkpoints
+checkpoints/*
 results
+src/imuposer/smpl/SMPL_NEUTRAL.pkl
 
 ProcessMocap
 src/imuposer/smpl/SMPL_NEUTRAL.pkl
