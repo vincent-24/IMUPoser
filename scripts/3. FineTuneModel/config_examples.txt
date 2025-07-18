@@ -1,0 +1,56 @@
+# IMUPoser Fine-tuning Configuration Examples
+# Copy and modify these configurations for your specific use case
+
+# Example 1: Fine-tune on DIP dataset
+# Use this when you want to fine-tune a general model on DIP-specific data
+[dip_finetune]
+combo_id = dip_imu
+experiment = finetune_general_to_dip
+checkpoint_path = ../../../Trained_Model_wandb/IMUPoserGlobalModel_acting-07072025/epoch=epoch=12-val_loss=validation_step_loss=0.00827.ckpt
+max_epochs = 50
+lr = 1e-4
+patience = 10
+use_joint_loss = true
+loss_type = mse
+
+# Example 2: Fine-tune on TotalCapture dataset
+# Use this when you want to adapt a model to TotalCapture data
+[totalcapture_finetune]
+combo_id = totalcapture
+experiment = finetune_general_to_tc
+checkpoint_path = ../../../Trained_Model_wandb/IMUPoserGlobalModel_acting-07072025/epoch=epoch=12-val_loss=validation_step_loss=0.00827.ckpt
+max_epochs = 75
+lr = 5e-5
+patience = 15
+use_joint_loss = true
+loss_type = mse
+
+# Example 3: Quick test run
+# Use this for rapid testing and development
+[test_finetune]
+combo_id = dip_imu
+experiment = test_run
+checkpoint_path = ../../../Trained_Model_wandb/IMUPoserGlobalModel_acting-07072025/epoch=epoch=12-val_loss=validation_step_loss=0.00827.ckpt
+max_epochs = 5
+lr = 1e-4
+patience = 3
+fast_dev_run = true
+
+# Example 4: Conservative fine-tuning
+# Use this when you want to make minimal changes to the pretrained model
+[conservative_finetune]
+combo_id = dip_imu
+experiment = conservative_finetune
+checkpoint_path = ../../../Trained_Model_wandb/IMUPoserGlobalModel_acting-07072025/epoch=epoch=12-val_loss=validation_step_loss=0.00827.ckpt
+max_epochs = 30
+lr = 1e-5  # Very low learning rate
+patience = 20
+use_joint_loss = true
+loss_type = l1
+
+# Notes:
+# - combo_id determines which joint set and dataset configuration to use
+# - Lower learning rates (1e-5 to 1e-4) are recommended for fine-tuning
+# - use_joint_loss=true adds 3D joint position loss for better pose quality
+# - patience controls early stopping - higher values allow more training
+# - Check available combo_ids in imuposer/config.py under amass_combos

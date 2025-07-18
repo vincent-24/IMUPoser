@@ -3,20 +3,21 @@ from torch.utils.data import Dataset
 from imuposer import math
 from imuposer.config import Config, amass_combos
 
-class GlobalModelDatasetFineTuneDIP(Dataset):
-    def __init__(self, split="train", config:Config=None):
+class GlobalModelDatasetFineTune(Dataset):
+    def __init__(self, split="train", config:Config=None, use_llm=False):
         super().__init__()
 
         # load the data
         self.train = split
         self.config = config
+        self.use_llm = use_llm
         self.data = self.load_data()
         
     def load_data(self):
         if self.train == "train":
-            data_files = ["dip_train.pt"]
+            data_files = ["llm_train.pt"] if self.use_llm else ["dip_train.pt"]
         else:
-            data_files = ["dip_test.pt"]
+            data_files = ["llm_test.pt"] if self.use_llm else ["dip_test.pt"]
 
         imu = []
         pose = []

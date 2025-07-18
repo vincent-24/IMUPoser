@@ -1,13 +1,20 @@
 from pathlib import Path
 import torch
 import datetime
+import os
+import sys
+
+# Add project root to path to find constants.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..')))
+
+from constants import RAW_AMASS_PATH, RAW_DIP_PATH, RAW_LLM_PATH, RAW_TEST_PATH, SMPL_MODEL_PATH, OG_SMPL_MODEL_PATH, AMASS_DATASETS
 
 class Config:
     def __init__(self, experiment=None, model=None, project_root_dir=None,
                  joints_set=None, loss_type=None, mkdir=True, normalize=False,
                  r6d=False, device=None, use_joint_loss=False, use_glb_rot_loss=False,
                  use_acc_recon_loss=False, pred_joints_set=None, pred_last_frame=False,
-                 use_vposer_loss=False, use_vel_loss=False):
+                 use_vposer_loss=False, use_vel_loss=False, use_llm=False, test_dataset=False):
         self.experiment = experiment
         self.model = model
         self.root_dir = Path(project_root_dir).absolute()
@@ -23,6 +30,8 @@ class Config:
         self.pred_last_frame = pred_last_frame
         self.use_vposer_loss = use_vposer_loss
         self.use_vel_loss = use_vel_loss
+        self.use_llm = use_llm
+        self.test_dataset = test_dataset
 
         if device != None:
             if 'cpu' in device:
@@ -37,24 +46,40 @@ class Config:
         self.loss_type = loss_type
     
     def build_paths(self):
-        self.smpl_model_path = self.root_dir / "src/imuposer/smpl/model.pkl"
-        self.og_smpl_model_path = self.root_dir / "src/imuposer/smpl/basicmodel_m_lbs_10_207_0_v1.0.0.pkl"
-        
-        self.raw_dip_path = self.root_dir / "data/raw/DIP_IMU"
-        self.raw_amass_path = self.root_dir / "data/raw/AMASS"
+        self.smpl_model_path = SMPL_MODEL_PATH
+        self.og_smpl_model_path = OG_SMPL_MODEL_PATH
+
+        self.raw_amass_path = self.root_dir / RAW_AMASS_PATH
+        self.raw_dip_path = self.root_dir / RAW_DIP_PATH
+        self.raw_llm_path = self.root_dir / RAW_LLM_PATH
+        self.raw_test_path = self.root_dir / RAW_TEST_PATH
 
         self.processed_imu_poser = self.root_dir / "data/processed_imuposer"
         self.processed_imu_poser_25fps = self.root_dir / "data/processed_imuposer_25fps"
 
         self.vposer_ckpt_path = self.root_dir / "extern/vposer_v2_05"
 
+        if not self.mkdir:
+            return
+        
+        if self.experiment is None:
+            print("No experiment name give, can't create dir")
+            return
+    
+        datestring = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        checkpoint_root_dir = Path("../..") if self.use_llm else self.root_dir
+        self.checkpoint_path = checkpoint_root_dir / f"checkpoints/{self.experiment}-{datestring}"
+        self.checkpoint_path.mkdir(exist_ok=True, parents=True)
+
+        '''
         if self.mkdir:
-            if self.experiment != None:
+            if self.experiment is not None:
                 datestring = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
                 self.checkpoint_path = self.root_dir / f"checkpoints/{self.experiment}-{datestring}"
                 self.checkpoint_path.mkdir(exist_ok=True, parents=True)
             else:
                 print("No experiment name give, can't create dir")
+        '''
 
     max_sample_len = 300
     acc_scale = 30
@@ -132,14 +157,9 @@ pred_joints_set = {
     "head": [0, 12, 15],
 }
 
-# Add more here if you want
-amass_datasets = ['ACCAD', 'BioMotionLab_NTroje', 'BMLhandball', 'BMLmovi', 'CMU',
-                  'DanceDB', 'DFaust_67', 'EKUT', 'Eyes_Japan_Dataset', 'HUMAN4D',
-                  'HumanEva', 'KIT', 'MPI_HDM05', 'MPI_Limits', 'MPI_mosh', 'SFU',
-                  'SSM_synced', 'TCD_handMocap', 'TotalCapture', 'Transitions_mocap']
+amass_datasets = AMASS_DATASETS
 
 leaf_joints = [20, 21, 7, 8, 12]
-
 
 limb2vertexkeys = {
     "LLeg": ["leftLeg", "leftToeBase", "leftFoot", "leftUpLeg"],

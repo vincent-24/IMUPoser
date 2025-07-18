@@ -16,17 +16,17 @@ def train_val_split(dataset, train_pct):
     val_size = total_size - train_size
     return train_size, val_size
 
-def get_dataset(config=None, test_only=False):
+def get_dataset(config=None, test_only=False, use_llm=False):
     model = config.model
     # load the dataset
     if model == "GlobalModelIMUPoser":
         if not test_only:
             train_dataset = GlobalModelDataset("train", config)
         test_dataset = GlobalModelDataset("test", config)
-    elif model == "GlobalModelIMUPoserFineTuneDIP":
+    elif model == "GlobalModelIMUPoserFineTune":
         if not test_only:
-            train_dataset = GlobalModelDatasetFineTuneDIP("train", config)
-        test_dataset = GlobalModelDatasetFineTuneDIP("test", config)
+            train_dataset = GlobalModelDatasetFineTune("train", config, use_llm=use_llm)
+        test_dataset = GlobalModelDatasetFineTune("test", config, use_llm=use_llm)
     else:
         print("Enter a valid model")
         return
@@ -43,11 +43,11 @@ def get_dataset(config=None, test_only=False):
     else:
         return test_dataset
 
-def get_datamodule(config):
+def get_datamodule(config, use_llm=False):
     model = config.model
     # load the dataset
-    if model in ["GlobalModelIMUPoser", "GlobalModelIMUPoserFineTuneDIP"]:
-        return IMUPoserDataModule(config)
+    if model in ["GlobalModelIMUPoser", "GlobalModelIMUPoserFineTune"]:
+        return IMUPoserDataModule(config, use_llm=use_llm)
     else:
         print("Enter a valid model")
 
@@ -63,12 +63,13 @@ def pad_seq(batch):
     return inputs, outputs, input_lens, output_lens
 
 class IMUPoserDataModule(pl.LightningDataModule):
-    def __init__(self, config):
+    def __init__(self, config, use_llm=False):
         super().__init__()
         self.config = config
+        self.use_llm = use_llm
 
     def setup(self, stage=None):
-        self.train_dataset, self.test_dataset, self.val_dataset = get_dataset(self.config)
+        self.train_dataset, self.test_dataset, self.val_dataset = get_dataset(self.config, use_llm=self.use_llm)
         print("Done with setup")
 
     def train_dataloader(self):

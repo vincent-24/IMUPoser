@@ -1,7 +1,14 @@
 import torch
+import sys
+import os
 from torch.utils.data import Dataset
+
+# Add project root to path to find constants.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..')))
+
 from imuposer import math
 from imuposer.config import Config, amass_combos
+from constants import TEST_DATA_FILES, DIP_DATA_FILES
 
 class GlobalModelDataset(Dataset):
     def __init__(self, split="train", config:Config=None):
@@ -16,7 +23,10 @@ class GlobalModelDataset(Dataset):
         if self.train == "train":
             data_files = [x.name for x in self.config.processed_imu_poser_25fps.iterdir() if "dip" not in x.name]
         else:
-            data_files = ["dip_test.pt"]
+            if self.config.test_dataset:
+                data_files = TEST_DATA_FILES
+            else:
+                data_files = DIP_DATA_FILES
 
         imu = []
         pose = []

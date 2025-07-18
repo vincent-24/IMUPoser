@@ -13,12 +13,18 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 import glob
+import argparse
+import sys
+
+# Add project root to path to find constants.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 from imuposer.config import Config, amass_datasets
 from imuposer.smpl.parametricModel import ParametricModel
 from imuposer import math
+from constants import PROJECT_ROOT_DIR, TEST_SUBJECTS
 
-config = Config(project_root_dir="../../")
+config = Config(project_root_dir=PROJECT_ROOT_DIR, use_llm=False, test_dataset=False)
 
 def process_amass():
     def _syn_acc(v):
@@ -49,8 +55,10 @@ def process_amass():
             except: continue
 
             framerate = int(cdata['mocap_framerate'])
-            if framerate == 120: step = 2
-            elif framerate == 60 or framerate == 59: step = 1
+            # if framerate == 120: step = 2
+            # elif framerate == 60 or framerate == 59: step = 1
+            if framerate >= 120: step = framerate // 60
+            elif framerate >= 30: step = 1
             else: continue
 
             data_pose.extend(cdata['poses'][::step].astype(np.float32))
@@ -64,8 +72,11 @@ def process_amass():
 
         length = torch.tensor(length, dtype=torch.int)
         shape = torch.tensor(np.asarray(data_beta, np.float32))
-        tran = torch.tensor(np.asarray(data_trans, np.float32))
-        pose = torch.tensor(np.asarray(data_pose, np.float32)).view(-1, 52, 3)
+        
+        # Handle inhomogeneous data by concatenating all sequences
+        # data_trans and data_pose are lists of arrays with potentially different lengths
+        tran = torch.tensor(np.concatenate(data_trans, axis=0).astype(np.float32))
+        pose = torch.tensor(np.concatenate(data_pose, axis=0).astype(np.float32)).view(-1, 52, 3)
 
         # include the left and right index fingers in the pose
         pose[:, 23] = pose[:, 37]     # right hand 
@@ -106,7 +117,7 @@ def process_amass():
         torch.save(out_vacc, ds_dir / 'vacc.pt')
         print('Synthetic AMASS dataset is saved at', str(ds_dir))
 
-def process_dipimu(split="test"):
+def process_dipimu(split="test", use_llm=False, test_dataset=False):
     def _syn_acc(v):
         r"""
         Synthesize accelerations from vertex positions.
@@ -116,10 +127,21 @@ def process_dipimu(split="test"):
         return acc
     
     imu_mask = [7, 8, 9, 10, 0, 2]
-    if split == "test":
-        test_split = ['s_09', 's_10']
+    if use_llm:
+        if split == "test":
+            test_split = ["LLM9", "LLM10"]
+        else:
+            test_split = ["LLM1", "LLM2", "LLM3", "LLM4", "LLM5", "LLM6", "LLM7", "LLM8"]
+    elif test_dataset:
+        if split == "test":
+            test_split = TEST_SUBJECTS
+        else:
+            test_split = []
     else:
-        test_split = ['s_01', 's_02', 's_03', 's_04', 's_05', 's_06', 's_07', 's_08']
+        if split == "test":
+            test_split = ['s_09', 's_10']
+        else:
+            test_split = ['s_01', 's_02', 's_03', 's_04', 's_05', 's_06', 's_07', 's_08']
     accs, oris, poses, trans, shapes, joints, vrots, vaccs = [], [], [], [], [], [], [], []
     
     body_model = ParametricModel(config.og_smpl_model_path)
@@ -128,9 +150,11 @@ def process_dipimu(split="test"):
     vi_mask = torch.tensor([1961, 5424, 876, 4362, 411, 3021])
     ji_mask = torch.tensor([18, 19, 1, 2, 15, 0])
 
+    data_path = config.raw_llm_path if use_llm else config.raw_test_path if test_dataset else config.raw_dip_path
+
     for subject_name in test_split:
-        for motion_name in os.listdir(os.path.join(config.raw_dip_path, subject_name)):
-            path = os.path.join(config.raw_dip_path, subject_name, motion_name)
+        for motion_name in os.listdir(os.path.join(data_path, subject_name)):
+            path = os.path.join(data_path, subject_name, motion_name)
             data = pickle.load(open(path, 'rb'), encoding='latin1')
             acc = torch.from_numpy(data['imu_acc'][:, imu_mask]).float()
             ori = torch.from_numpy(data['imu_ori'][:, imu_mask]).float()
@@ -146,7 +170,12 @@ def process_dipimu(split="test"):
             acc, ori, pose = acc[6:-6], ori[6:-6], pose[6:-6]
             shape = torch.ones((10))
             tran = torch.zeros(pose.shape[0], 3) # dip-imu does not contain translations
+            
             if torch.isnan(acc).sum() == 0 and torch.isnan(ori).sum() == 0 and torch.isnan(pose).sum() == 0:
+                # Skip if pose tensor is empty (from trimming very short sequences)
+                if pose.shape[0] == 0:
+                    continue
+                    
                 accs.append(acc.clone())
                 oris.append(ori.clone())
                 poses.append(pose.clone())
@@ -156,6 +185,11 @@ def process_dipimu(split="test"):
                 
                 # forward kinematics to get the joint position
                 p = math.axis_angle_to_rotation_matrix(pose).view(-1, 24, 3, 3)
+                
+                # Skip if pose tensor is empty before forward kinematics
+                if p.shape[0] == 0:
+                    continue
+                    
                 grot, joint, vert = body_model.forward_kinematics(p, shape, tran, calc_mesh=True)
                 vacc = _syn_acc(vert[:, vi_mask])
                 vrot = grot[:, ji_mask]
@@ -164,9 +198,14 @@ def process_dipimu(split="test"):
                 vaccs.append(vacc)
                 vrots.append(vrot)
             else:
-                print('DIP-IMU: %s/%s has too much nan! Discard!' % (subject_name, motion_name))
-                
-    path_to_save = config.processed_imu_poser / f"DIP_IMU/{split}"
+                print(f"{'LLM' if use_llm else 'DIP_IMU'}: %s/%s has too much nan! Discard!" % (subject_name, motion_name))
+
+    # Add safety check before saving
+    if len(poses) == 0:
+        print(f"No valid motion files found for {'LLM' if use_llm else 'DIP_IMU'} {split} split. Skipping processing.")
+        return
+
+    path_to_save = config.processed_imu_poser / f"{'LLM' if use_llm else 'TEST' if test_dataset else 'DIP_IMU'}/{split}"
     path_to_save.mkdir(exist_ok=True, parents=True)
     
     torch.save(poses, path_to_save / 'pose.pt')
@@ -178,9 +217,16 @@ def process_dipimu(split="test"):
     torch.save(oris, path_to_save / 'oris.pt')
     torch.save(accs, path_to_save / 'accs.pt')
     
-    print('Preprocessed DIP-IMU dataset is saved at', path_to_save)
+    print('Preprocessed dataset is saved at', path_to_save)
 
 if __name__ == '__main__':
-    process_dipimu(split="test")
-    process_dipimu(split="train")
-    process_amass()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use-llm', action='store_true', default=False, help='Process LLM dataset instead of DIP-IMU')
+    parser.add_argument('--test-dataset', action='store_true', default=False, help='Process test dataset only')
+    args = parser.parse_args()
+
+    process_dipimu(split="test", use_llm=args.use_llm, test_dataset=args.test_dataset)
+    process_dipimu(split="train", use_llm=args.use_llm, test_dataset=args.test_dataset)
+
+    if not args.use_llm and not args.test_dataset:
+        process_amass()
