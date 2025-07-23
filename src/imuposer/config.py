@@ -200,3 +200,105 @@ end_effector2joints = {
                             17, 19, 23,
                             3, 6, 9, 13, 14]
 }
+
+dip_imu_sensor_vertex_ids = {
+    'head': 411,
+    'sternum': 3072,
+    'pelvis': 3021,
+    'l_arm': 1961,
+    'r_arm': 5424,
+    'l_forearm': 2174,
+    'r_forearm': 5637,
+    'l_leg': 1176,
+    'r_leg': 4662,
+    'l_foot': 3365,
+    'r_foot': 6728,
+    'l_toe': 3346,
+    'r_toe': 6709,
+    'l_hand': 2238,
+    'r_hand': 5701,
+    'l_shoulder': 1953,
+    'r_shoulder': 5416,
+    'l_shin': 1058,
+    'r_shin': 4544
+}
+
+xsens_imu_sensor_vertex_ids = {
+    'head': 411,
+    'pelvis': 3021,
+    'sternum': 3072,
+    'l_shoulder': 1953,
+    'r_shoulder': 5416,
+    'l_upper_arm': 1961,
+    'r_upper_arm': 5424,
+    'l_forearm': 2174,
+    'r_forearm': 5637,
+    'l_hand': 2238,
+    'r_hand': 5701,
+    'l_upper_leg': 1176,
+    'r_upper_leg': 4662,
+    'l_lower_leg': 1058,
+    'r_lower_leg': 4544,
+    'l_foot': 3365,
+    'r_foot': 6728,
+    'l_toe': 3346,
+    'r_toe': 6709
+}
+
+total_capture_sensor_vertex_ids = {
+    'head': 411,
+    'sternum': 3072,
+    'pelvis': 3021,
+    'l_shoulder': 1953,
+    'r_shoulder': 5416,
+    'l_upper_arm': 1961,
+    'r_upper_arm': 5424,
+    'l_forearm': 2174,
+    'r_forearm': 5637,
+    'l_hand': 2238,
+    'r_hand': 5701,
+    'l_upper_leg': 1176,
+    'r_upper_leg': 4662
+}
+
+smpl_vertices_corresponding_joints = {
+    0: [3021],  # pelvis
+    1: [1176],  # left hip
+    2: [4662],  # right hip
+    3: [3072],  # spine1
+    4: [1058],  # left knee
+    5: [4544],  # right knee
+    6: [3072],  # spine2
+    7: [3365],  # left ankle
+    8: [6728],  # right ankle
+    9: [3072],  # spine3
+    10: [3346], # left foot
+    11: [6709], # right foot
+    12: [3072], # neck
+    13: [1953], # left collar
+    14: [5416], # right collar
+    15: [411],  # head
+    16: [1961], # left shoulder
+    17: [5424], # right shoulder
+    18: [2174], # left elbow
+    19: [5637], # right elbow
+    20: [2238], # left wrist
+    21: [5701], # right wrist
+    22: [2238], # left hand (thumb)
+    23: [5701], # right hand (thumb)
+}
+
+class BodyModel:
+    def __init__(self):
+        pass
+    
+    def forward_kinematics(self, pose, calc_mesh=False):
+        """
+        Forward kinematics function - placeholder implementation
+        You'll need to implement this based on your SMPL model requirements
+        """
+        batch_size, seq_len = pose.shape[:2]
+        joint_positions = torch.zeros(batch_size, seq_len, 24, 3)
+        return None, joint_positions
+
+body_model = BodyModel()

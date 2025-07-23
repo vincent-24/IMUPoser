@@ -23,6 +23,7 @@ from imuposer.models.LSTMs.IMUPoser_Model import IMUPoserModel
 from imuposer.models.LSTMs.IMUPoser_Model_FineTune import IMUPoserModelFineTune
 from imuposer.math.angular import r6d_to_rotation_matrix
 from imuposer.smpl.parametricModel import ParametricModel
+from imuposer.dataloader_pose_ft import get_ft_pose_dataloader
 from constants import PROJECT_ROOT_DIR, BASE_MODEL_DIR, PROCESSED_TEST_DATA, TEST_SUBJECTS, TEST_RESULTS_DIR, TEST_CHECKPOINT
 
 # set the random seed
